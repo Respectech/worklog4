@@ -12,7 +12,8 @@ apt install -y git \
 	libssl-dev \
 	libffi-dev \
 	python3-dev \
-	libmariadb-dev
-pip3 install gunicorn \
-	mysql-connector-python \
-	flask
+	libmariadb-dev \
+	gunicorn \
+	python3-flask \
+	nginx
+pip3 install mysql-connector-python --break-system-packages
