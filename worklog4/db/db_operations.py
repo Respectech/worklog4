@@ -52,7 +52,9 @@ def create_wl4_database_and_table():
             usergroup VARCHAR(255),
             color VARCHAR(7),
             email VARCHAR(255),
-            info VARCHAR(255)
+            info VARCHAR(255),
+            preferred_template_id INT,
+            FOREIGN KEY (preferred_template_id) REFERENCES page_templates(id)
         )
         """
         cursor.execute(create_table_query)
@@ -113,4 +115,200 @@ def sync_user_to_wl4(username):
             conn_ltc.close()
         if 'conn_wl4' in locals():
             conn_wl4.close()
+        return False
+
+def ensure_page_templates_table():
+    """Ensure the page_templates and template_view_preferences tables exist."""
+    conn = get_db_connection(database='wl4')
+    if conn is None:
+        print("Failed to connect to wl4 database")
+        return False
+
+    try:
+        cursor = conn.cursor()
+        cursor.execute("SHOW TABLES LIKE 'page_templates'")
+        table_exists = cursor.fetchone()
+
+        if not table_exists:
+            cursor.execute("""
+                CREATE TABLE page_templates (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    name VARCHAR(255) NOT NULL,
+                    version VARCHAR(50) NOT NULL,
+                    value BLOB NOT NULL
+                )
+            """)
+            initial_html = """
+            <div class="template-div-container">
+                <div id="page_template_div1"></div>
+                <i class="bi bi-gear template-div-icon" data-bs-toggle="modal" data-bs-target="#viewModal"></i>
+            </div>
+            """.strip()
+            cursor.execute("""
+                INSERT INTO page_templates (name, version, value)
+                VALUES (%s, %s, %s)
+            """, ("Single Pane", "1.0", initial_html.encode('utf-8')))
+            conn.commit()
+            print("Created page_templates table and inserted initial record")
+        else:
+            expected_html = """
+            <div class="template-div-container">
+                <div id="page_template_div1"></div>
+                <i class="bi bi-gear template-div-icon" data-bs-toggle="modal" data-bs-target="#viewModal"></i>
+            </div>
+            """.strip()
+            cursor.execute("""
+                SELECT value FROM page_templates WHERE name = %s AND version = %s
+            """, ("Single Pane", "1.0"))
+            result = cursor.fetchone()
+            if result and result[0].decode('utf-8') != expected_html:
+                cursor.execute("""
+                    UPDATE page_templates
+                    SET value = %s
+                    WHERE name = %s AND version = %s
+                """, (expected_html.encode('utf-8'), "Single Pane", "1.0"))
+                conn.commit()
+                print("Updated Single Pane template value")
+
+        cursor.execute("SHOW TABLES LIKE 'template_view_preferences'")
+        prefs_table_exists = cursor.fetchone()
+
+        if not prefs_table_exists:
+            cursor.execute("""
+                CREATE TABLE template_view_preferences (
+                    user_id VARCHAR(255),
+                    template_id INT,
+                    view_type VARCHAR(50),
+                    PRIMARY KEY (user_id, template_id),
+                    FOREIGN KEY (template_id) REFERENCES page_templates(id)
+                )
+            """)
+            conn.commit()
+            print("Created template_view_preferences table")
+
+        return True
+    except Error as e:
+        print(f"Error ensuring tables: {e}")
+        return False
+    finally:
+        cursor.close()
+        conn.close()
+
+def get_page_templates():
+    """Retrieve all page templates for selection."""
+    conn = get_db_connection(database='wl4')
+    if conn is None:
+        print("Failed to connect to wl4 database")
+        return []
+
+    try:
+        cursor = conn.cursor()
+        cursor.execute("SELECT id, name, version FROM page_templates")
+        templates = cursor.fetchall()
+        cursor.close()
+        conn.close()
+        return [{'id': t[0], 'name': t[1], 'version': t[2]} for t in templates]
+    except Error as e:
+        print(f"Error fetching page templates: {e}")
+        if conn:
+            conn.close()
+        return []
+
+def get_user_preferred_template(username):
+    """Get the preferred template HTML snippet and ID for a user."""
+    conn = get_db_connection(database='wl4')
+    if conn is None:
+        print("Failed to connect to wl4 database")
+        return None, None
+
+    try:
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT pt.value, pt.id
+            FROM users u
+            LEFT JOIN page_templates pt ON u.preferred_template_id = pt.id
+            WHERE u.username = %s
+        """, (username,))
+        result = cursor.fetchone()
+        cursor.close()
+        conn.close()
+        if result and result[0]:
+            return result[0].decode('utf-8'), result[1]
+        return None, None
+    except Error as e:
+        print(f"Error fetching user preferred template: {e}")
+        if conn:
+            conn.close()
+        return None, None
+
+def set_user_preferred_template(username, template_id):
+    """Set the user's preferred template."""
+    conn = get_db_connection(database='wl4')
+    if conn is None:
+        print("Failed to connect to wl4 database")
+        return False
+
+    try:
+        cursor = conn.cursor()
+        cursor.execute("""
+            UPDATE users
+            SET preferred_template_id = %s
+            WHERE username = %s
+        """, (template_id, username))
+        conn.commit()
+        cursor.close()
+        conn.close()
+        return True
+    except Error as e:
+        print(f"Error setting user preferred template: {e}")
+        if conn:
+            conn.close()
+        return False
+
+def get_user_view_preference(username, template_id):
+    """Get the user's preferred view for a template's div1."""
+    conn = get_db_connection(database='wl4')
+    if conn is None:
+        print("Failed to connect to wl4 database")
+        return None
+
+    try:
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT view_type
+            FROM template_view_preferences
+            WHERE user_id = %s AND template_id = %s
+        """, (username, template_id))
+        result = cursor.fetchone()
+        cursor.close()
+        conn.close()
+        return result[0] if result else None
+    except Error as e:
+        print(f"Error fetching view preference: {e}")
+        if conn:
+            conn.close()
+        return None
+
+def set_user_view_preference(username, template_id, view_type):
+    """Set the user's preferred view for a template's div1."""
+    conn = get_db_connection(database='wl4')
+    if conn is None:
+        print("Failed to connect to wl4 database")
+        return False
+
+    try:
+        cursor = conn.cursor()
+        cursor.execute("""
+            INSERT INTO template_view_preferences (user_id, template_id, view_type)
+            VALUES (%s, %s, %s)
+            ON DUPLICATE KEY UPDATE view_type = %s
+        """, (username, template_id, view_type, view_type))
+        conn.commit()
+        cursor.close()
+        conn.close()
+        return True
+    except Error as e:
+        print(f"Error setting view preference: {e}")
+        if conn:
+            conn.close()
         return False

@@ -1,9 +1,68 @@
 body {
     background-color: #f8f9fa;
+    margin: 0; /* Remove default margin */
+    padding: 0; /* Remove default padding */
 }
+
 .container {
     max-width: 960px;
 }
+
 .alert {
     margin-bottom: 1rem;
+}
+
+header {
+    z-index: 1100; /* Ensure header is above content */
+}
+
+.template-fullscreen {
+    width: 100vw; /* Full viewport width */
+    min-height: calc(100vh - 120px); /* Full height minus header */
+    margin-top: 120px; /* Offset for fixed header */
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    padding: 10px;
+    box-sizing: border-box;
+}
+
+.template-div-container {
+    position: relative;
+    width: 100%; /* Full width of parent */
+    min-height: 200px;
+    border: 1px solid #ddd;
+    padding: 10px;
+    box-sizing: border-box;
+}
+
+.template-div-icon {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    cursor: pointer;
+    font-size: 1.2rem;
+    color: #6c757d;
+    z-index: 1000;
+    padding: 5px;
+    pointer-events: auto;
+}
+
+.template-div-icon:hover {
+    color: #007bff;
+}
+
+.template-div-container > div {
+    width: 100%;
+}
+
+/* Ensure parent elements don’t block clicks */
+.template-div-container {
+    pointer-events: auto;
+}
+
+/* Style DataTables for full width */
+#logTable {
+    width: 100% !important;
 }

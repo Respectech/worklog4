@@ -5,18 +5,139 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Home</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/dataTables.min.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/colReorder.dataTables.min.css') }}">
 </head>
 <body>
-    <div class="container">
-        <div class="row justify-content-center mt-5">
-            <div class="col-md-6">
-                <h2>Welcome, {{ username }}!</h2>
-                <p>This is your dashboard.</p>
+    <!-- Fixed Header -->
+    <header class="fixed-top bg-light shadow p-3">
+        <div class="container">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h2 class="mb-0">Welcome, {{ username }}!</h2>
+                    {% with messages = get_flashed_messages(with_categories=true) %}
+                        {% if messages %}
+                            {% for category, message in messages %}
+                                <div class="alert alert-{{ 'danger' if category == 'error' else 'success' }} alert-dismissible fade show mt-2" role="alert">
+                                    {{ message }}
+                                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                                </div>
+                            {% endfor %}
+                        {% endif %}
+                    {% endwith %}
+                    <form method="POST" action="{{ url_for('home.home') }}" class="mt-2">
+                        <label for="template_id" class="form-label">Select Preferred Template</label>
+                        <select class="form-select" id="template_id" name="template_id" onchange="this.form.submit()">
+                            <option value="">Select a template</option>
+                            {% for template in templates %}
+                                <option value="{{ template.id }}">{{ template.name }} (v{{ template.version }})</option>
+                            {% endfor %}
+                        </select>
+                    </form>
+                </div>
                 <a href="{{ url_for('logout.logout') }}" class="btn btn-secondary">Logout</a>
             </div>
         </div>
+    </header>
+
+    <!-- Full-Screen Template Content -->
+    <div class="template-fullscreen">
+        {{ template_html | safe }}
     </div>
+
+    <!-- View Selection Modal -->
+    <div class="modal fade" id="viewModal" tabindex="-1" aria-labelledby="viewModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="viewModalLabel">Select View</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form method="POST" action="{{ url_for('home.home') }}">
+                        <div class="mb-3">
+                            <label for="view_type" class="form-label">View</label>
+                            <select class="form-select" id="view_type" name="view_type" required>
+                                <option value="">Select a view</option>
+                                {% for view in available_views %}
+                                    <option value="{{ view.type }}">{{ view.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <button type="submit" class="btn btn-primary">Apply</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/jquery.min.js') }}"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="{{ url_for('static', filename='js/dataTables.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/dataTables.colReorder.min.js') }}"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Log Bootstrap availability
+            if (typeof bootstrap === 'undefined') {
+                console.error('Bootstrap JavaScript is not loaded');
+                return;
+            }
+            console.log('Bootstrap JavaScript loaded successfully');
+
+            // Verify modal exists
+            const modal = document.getElementById('viewModal');
+            if (!modal) {
+                console.error('Modal with id "viewModal" not found in DOM');
+                return;
+            }
+            console.log('Modal with id "viewModal" found in DOM');
+
+            // Verify gear icon
+            const gearIcon = document.querySelector('.template-div-icon');
+            if (!gearIcon) {
+                console.error('Gear icon with class "template-div-icon" not found');
+                return;
+            }
+            console.log('Gear icon found');
+
+            // Manual click handler for gear icon
+            gearIcon.addEventListener('click', function(event) {
+                event.stopPropagation();
+                console.log('Gear icon clicked');
+                try {
+                    const modalInstance = new bootstrap.Modal(modal);
+                    modalInstance.show();
+                } catch (e) {
+                    console.error('Error opening modal:', e);
+                }
+            });
+
+            // Prevent parent elements from capturing clicks
+            const container = document.querySelector('.template-div-container');
+            if (container) {
+                container.addEventListener('click', function(event) {
+                    event.stopPropagation();
+                });
+            }
+
+            // Render view HTML
+            const div = document.getElementById('page_template_div1');
+            if (div) {
+                div.innerHTML = `{{ view_html | safe }}`;
+                if (div.querySelector('#logTable')) {
+                    $('#logTable').DataTable({
+                        colReorder: true,
+                        pageLength: 10,
+                        order: [[0, 'desc']],
+                        search: true
+                    });
+                }
+            } else {
+                console.error('Div with id "page_template_div1" not found');
+            }
+        });
+    </script>
 </body>
 </html>

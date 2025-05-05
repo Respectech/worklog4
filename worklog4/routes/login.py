@@ -1,6 +1,6 @@
 from flask import Blueprint, render_template, request, redirect, url_for, session, flash
 from mysql.connector import Error
-from db.db_operations import get_db_connection, create_wl4_database_and_table, sync_user_to_wl4
+from db.db_operations import get_db_connection, create_wl4_database_and_table, sync_user_to_wl4, ensure_page_templates_table, get_user_preferred_template
 
 login_bp = Blueprint('login', __name__)
 
@@ -35,13 +35,33 @@ def login():
                     flash('Failed to sync user to wl4 database.', 'error')
                     return render_template('login.html')
 
+                if not ensure_page_templates_table():
+                    flash('Failed to initialize page templates.', 'error')
+                    return render_template('login.html')
+
                 session['username'] = username
+                template_html, template_id = get_user_preferred_template(username)
+                if template_html is None:
+                    template_html = """
+                    <div class="template-div-container">
+                        <div id="page_template_div1"></div>
+                        <i class="bi bi-gear template-div-icon" data-bs-toggle="modal" data-bs-target="#viewModal"></i>
+                    </div>
+                    """.strip()
+                    template_id = 1  # Default to Single Pane
+                session['template_html'] = template_html
+                session['template_id'] = template_id
                 flash('Login successful!', 'success')
                 return redirect(url_for('home.home'))
             else:
                 flash('Invalid username or password.', 'error')
         except Error as e:
             flash(f'Database error: {e}', 'error')
-            conn.close()
+            if conn:
+                conn.close()
+        except ValueError as e:
+            flash(f'Internal error: {e}', 'error')
+            if conn:
+                conn.close()
 
     return render_template('login.html')
