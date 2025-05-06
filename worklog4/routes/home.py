@@ -50,7 +50,7 @@ def home():
     ]
     view_html = ""
     if view_type == 'log_table':
-        view_html = get_log_table_view()
+        view_html = get_log_table_view(limit=10)  # Load 1 row initially
     elif view_type == 'none':
         view_html = ""
 

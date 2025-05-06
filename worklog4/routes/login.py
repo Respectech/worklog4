@@ -41,14 +41,31 @@ def login():
 
                 session['username'] = username
                 template_html, template_id = get_user_preferred_template(username)
-                if template_html is None:
+                if template_html is None or template_id is None:
+                    # Fallback to Single Pane
                     template_html = """
                     <div class="template-div-container">
                         <div id="page_template_div1"></div>
                         <i class="bi bi-gear template-div-icon" data-bs-toggle="modal" data-bs-target="#viewModal"></i>
                     </div>
                     """.strip()
-                    template_id = 1  # Default to Single Pane
+                    template_id = 1
+                    # Set default template in database
+                    conn = get_db_connection(database='wl4')
+                    if conn:
+                        try:
+                            cursor = conn.cursor()
+                            cursor.execute("""
+                                UPDATE users
+                                SET preferred_template_id = %s
+                                WHERE username = %s
+                            """, (template_id, username))
+                            conn.commit()
+                        except Error as e:
+                            print(f"Error setting default template: {e}")
+                        finally:
+                            cursor.close()
+                            conn.close()
                 session['template_html'] = template_html
                 session['template_id'] = template_id
                 flash('Login successful!', 'success')

@@ -9,6 +9,7 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/dataTables.min.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/colReorder.dataTables.min.css') }}">
+    <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='favicon.ico') }}">
 </head>
 <body>
     <!-- Fixed Header -->
@@ -53,7 +54,7 @@
             <div class="modal-content">
                 <div class="modal-header">
                     <h5 class="modal-title" id="viewModalLabel">Select View</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
                     <form method="POST" action="{{ url_for('home.home') }}">
@@ -73,71 +74,14 @@
         </div>
     </div>
 
+    <!-- Pass view_html to JavaScript -->
+    <script>
+        window.view_html = `{{ view_html | safe }}`;
+    </script>
     <script src="{{ url_for('static', filename='js/jquery.min.js') }}"></script>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="{{ url_for('static', filename='js/bootstrap.bundle.min.js') }}"></script>
     <script src="{{ url_for('static', filename='js/dataTables.min.js') }}"></script>
     <script src="{{ url_for('static', filename='js/dataTables.colReorder.min.js') }}"></script>
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            // Log Bootstrap availability
-            if (typeof bootstrap === 'undefined') {
-                console.error('Bootstrap JavaScript is not loaded');
-                return;
-            }
-            console.log('Bootstrap JavaScript loaded successfully');
-
-            // Verify modal exists
-            const modal = document.getElementById('viewModal');
-            if (!modal) {
-                console.error('Modal with id "viewModal" not found in DOM');
-                return;
-            }
-            console.log('Modal with id "viewModal" found in DOM');
-
-            // Verify gear icon
-            const gearIcon = document.querySelector('.template-div-icon');
-            if (!gearIcon) {
-                console.error('Gear icon with class "template-div-icon" not found');
-                return;
-            }
-            console.log('Gear icon found');
-
-            // Manual click handler for gear icon
-            gearIcon.addEventListener('click', function(event) {
-                event.stopPropagation();
-                console.log('Gear icon clicked');
-                try {
-                    const modalInstance = new bootstrap.Modal(modal);
-                    modalInstance.show();
-                } catch (e) {
-                    console.error('Error opening modal:', e);
-                }
-            });
-
-            // Prevent parent elements from capturing clicks
-            const container = document.querySelector('.template-div-container');
-            if (container) {
-                container.addEventListener('click', function(event) {
-                    event.stopPropagation();
-                });
-            }
-
-            // Render view HTML
-            const div = document.getElementById('page_template_div1');
-            if (div) {
-                div.innerHTML = `{{ view_html | safe }}`;
-                if (div.querySelector('#logTable')) {
-                    $('#logTable').DataTable({
-                        colReorder: true,
-                        pageLength: 10,
-                        order: [[0, 'desc']],
-                        search: true
-                    });
-                }
-            } else {
-                console.error('Div with id "page_template_div1" not found');
-            }
-        });
-    </script>
+    <script src="{{ url_for('static', filename='js/home.js') }}"></script>
 </body>
 </html>
