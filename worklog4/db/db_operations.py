@@ -1,6 +1,11 @@
 import mysql.connector
 from mysql.connector import Error
 from config.db_config import load_db_config
+import logging
+
+# Configure logging
+logging.basicConfig(level=logging.DEBUG)
+logger = logging.getLogger(__name__)
 
 def get_db_connection(database=None):
     config = load_db_config()
@@ -16,7 +21,7 @@ def get_db_connection(database=None):
         )
         return conn
     except Error as e:
-        print(f"Error connecting to MySQL: {e}")
+        logger.error(f"Error connecting to MySQL: {e}")
         return None
 
 def create_wl4_database_and_table():
@@ -63,7 +68,7 @@ def create_wl4_database_and_table():
         conn.close()
         return True
     except Error as e:
-        print(f"Error creating wl4 database/table: {e}")
+        logger.error(f"Error creating wl4 database/table: {e}")
         if conn:
             conn.close()
         return False
@@ -110,7 +115,7 @@ def sync_user_to_wl4(username):
         conn_wl4.close()
         return True
     except Error as e:
-        print(f"Error syncing user to wl4: {e}")
+        logger.error(f"Error syncing user to wl4: {e}")
         if conn_ltc:
             conn_ltc.close()
         if 'conn_wl4' in locals():
@@ -121,7 +126,7 @@ def ensure_page_templates_table():
     """Ensure the page_templates and template_view_preferences tables exist."""
     conn = get_db_connection(database='wl4')
     if conn is None:
-        print("Failed to connect to wl4 database")
+        logger.error("Failed to connect to wl4 database")
         return False
 
     try:
@@ -141,7 +146,7 @@ def ensure_page_templates_table():
             initial_html = """
             <div class="template-div-container">
                 <div id="page_template_div1"></div>
-                <i class="bi bi-gear template-div-icon" data-bs-toggle="modal" data-bs-target="#viewModal"></i>
+                <i class="bi bi-gear template-div-icon" data-bs-toggle="modal" data-bs-target="#viewModal" data-panel-id="div1"></i>
             </div>
             """.strip()
             cursor.execute("""
@@ -149,12 +154,12 @@ def ensure_page_templates_table():
                 VALUES (%s, %s, %s)
             """, ("Single Pane", "1.0", initial_html.encode('utf-8')))
             conn.commit()
-            print("Created page_templates table and inserted initial record")
+            logger.info("Created page_templates table and inserted initial record")
         else:
             expected_html = """
             <div class="template-div-container">
                 <div id="page_template_div1"></div>
-                <i class="bi bi-gear template-div-icon" data-bs-toggle="modal" data-bs-target="#viewModal"></i>
+                <i class="bi bi-gear template-div-icon" data-bs-toggle="modal" data-bs-target="#viewModal" data-panel-id="div1"></i>
             </div>
             """.strip()
             cursor.execute("""
@@ -168,7 +173,7 @@ def ensure_page_templates_table():
                     WHERE name = %s AND version = %s
                 """, (expected_html.encode('utf-8'), "Single Pane", "1.0"))
                 conn.commit()
-                print("Updated Single Pane template value")
+                logger.info("Updated Single Pane template value")
 
         cursor.execute("SHOW TABLES LIKE 'template_view_preferences'")
         prefs_table_exists = cursor.fetchone()
@@ -178,17 +183,18 @@ def ensure_page_templates_table():
                 CREATE TABLE template_view_preferences (
                     user_id VARCHAR(255),
                     template_id INT,
+                    panel_id VARCHAR(10) DEFAULT 'div1',
                     view_type VARCHAR(50),
-                    PRIMARY KEY (user_id, template_id),
+                    PRIMARY KEY (user_id, template_id, panel_id),
                     FOREIGN KEY (template_id) REFERENCES page_templates(id)
                 )
             """)
             conn.commit()
-            print("Created template_view_preferences table")
+            logger.info("Created template_view_preferences table")
 
         return True
     except Error as e:
-        print(f"Error ensuring tables: {e}")
+        logger.error(f"Error ensuring tables: {e}")
         return False
     finally:
         cursor.close()
@@ -198,7 +204,7 @@ def get_page_templates():
     """Retrieve all page templates for selection."""
     conn = get_db_connection(database='wl4')
     if conn is None:
-        print("Failed to connect to wl4 database")
+        logger.error("Failed to connect to wl4 database")
         return []
 
     try:
@@ -209,7 +215,7 @@ def get_page_templates():
         conn.close()
         return [{'id': t[0], 'name': t[1], 'version': t[2]} for t in templates]
     except Error as e:
-        print(f"Error fetching page templates: {e}")
+        logger.error(f"Error fetching page templates: {e}")
         if conn:
             conn.close()
         return []
@@ -218,7 +224,7 @@ def get_user_preferred_template(username):
     """Get the preferred template HTML snippet and ID for a user."""
     conn = get_db_connection(database='wl4')
     if conn is None:
-        print("Failed to connect to wl4 database")
+        logger.error("Failed to connect to wl4 database")
         return None, None
 
     try:
@@ -236,7 +242,7 @@ def get_user_preferred_template(username):
             return result[0].decode('utf-8'), result[1]
         return None, None
     except Error as e:
-        print(f"Error fetching user preferred template: {e}")
+        logger.error(f"Error fetching user preferred template: {e}")
         if conn:
             conn.close()
         return None, None
@@ -245,7 +251,7 @@ def set_user_preferred_template(username, template_id):
     """Set the user's preferred template."""
     conn = get_db_connection(database='wl4')
     if conn is None:
-        print("Failed to connect to wl4 database")
+        logger.error("Failed to connect to wl4 database")
         return False
 
     try:
@@ -260,16 +266,16 @@ def set_user_preferred_template(username, template_id):
         conn.close()
         return True
     except Error as e:
-        print(f"Error setting user preferred template: {e}")
+        logger.error(f"Error setting user preferred template: {e}")
         if conn:
             conn.close()
         return False
 
-def get_user_view_preference(username, template_id):
-    """Get the user's preferred view for a template's div1."""
+def get_user_view_preference(username, template_id, panel_id='div1'):
+    """Get the user's preferred view for a template and panel."""
     conn = get_db_connection(database='wl4')
     if conn is None:
-        print("Failed to connect to wl4 database")
+        logger.error("Failed to connect to wl4 database")
         return None
 
     try:
@@ -277,38 +283,40 @@ def get_user_view_preference(username, template_id):
         cursor.execute("""
             SELECT view_type
             FROM template_view_preferences
-            WHERE user_id = %s AND template_id = %s
-        """, (username, template_id))
+            WHERE user_id = %s AND template_id = %s AND panel_id = %s
+        """, (username, template_id, panel_id))
         result = cursor.fetchone()
         cursor.close()
         conn.close()
+        logger.debug(f"Fetched view preference for user {username}, template {template_id}, panel {panel_id}: {result[0] if result else None}")
         return result[0] if result else None
     except Error as e:
-        print(f"Error fetching view preference: {e}")
+        logger.error(f"Error fetching view preference: {e}")
         if conn:
             conn.close()
         return None
 
-def set_user_view_preference(username, template_id, view_type):
-    """Set the user's preferred view for a template's div1."""
+def set_user_view_preference(username, template_id, view_type, panel_id='div1'):
+    """Set the user's preferred view for a template and panel."""
     conn = get_db_connection(database='wl4')
     if conn is None:
-        print("Failed to connect to wl4 database")
+        logger.error("Failed to connect to wl4 database")
         return False
 
     try:
         cursor = conn.cursor()
         cursor.execute("""
-            INSERT INTO template_view_preferences (user_id, template_id, view_type)
-            VALUES (%s, %s, %s)
+            INSERT INTO template_view_preferences (user_id, template_id, panel_id, view_type)
+            VALUES (%s, %s, %s, %s)
             ON DUPLICATE KEY UPDATE view_type = %s
-        """, (username, template_id, view_type, view_type))
+        """, (username, template_id, panel_id, view_type, view_type))
         conn.commit()
         cursor.close()
         conn.close()
+        logger.debug(f"Set view preference for user {username}, template {template_id}, panel {panel_id}: {view_type}")
         return True
     except Error as e:
-        print(f"Error setting view preference: {e}")
+        logger.error(f"Error setting view preference: {e}")
         if conn:
             conn.close()
         return False
