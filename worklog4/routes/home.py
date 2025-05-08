@@ -4,6 +4,7 @@ from legacy.db_operations import get_log_table_view
 import logging
 import time
 from functools import lru_cache
+import json
 
 # Configure logging
 logging.basicConfig(level=logging.DEBUG)
@@ -13,11 +14,13 @@ home_bp = Blueprint('home', __name__)
 
 # Cache view_html for 60 seconds
 @lru_cache(maxsize=32)
-def cached_get_log_table_view(limit, offset=0, panel_id='div1'):
+def cached_get_log_table_view(limit, offset=0, panel_id='div1', conditions_json='[]'):
     start_time = time.time()
-    result = get_log_table_view(limit, offset)
+    # Convert conditions_json back to a list for processing
+    conditions = json.loads(conditions_json)
+    result = get_log_table_view(limit, offset, conditions)
     cache_time = time.time() - start_time
-    logger.debug(f"Cached view_html generated in {cache_time:.3f} seconds for limit={limit}, offset={offset}, panel_id={panel_id}")
+    logger.debug(f"Cached view_html generated in {cache_time:.3f} seconds for limit={limit}, offset={offset}, panel_id={panel_id}, conditions={conditions}")
     return result
 
 @home_bp.route('/home', methods=['GET', 'POST'])
@@ -78,13 +81,13 @@ def home():
     view_html_div2 = ""
     if view_type_div1 == 'log_table':
         start_time = time.time()
-        view_html_div1 = cached_get_log_table_view(limit=10, panel_id='div1')  # Limit to 10 rows
+        view_html_div1 = cached_get_log_table_view(limit=10, panel_id='div1', conditions_json='[]')
         response_time = time.time() - start_time
-        row_count = view_html_div1.count('<tr')  # Approximate row count
+        row_count = view_html_div1.count('<tr')
         logger.debug(f"view_html_div1 response took {response_time:.3f} seconds, rows={row_count}, content: {view_html_div1[:100]}...")
     if view_type_div2 == 'log_table':
         start_time = time.time()
-        view_html_div2 = cached_get_log_table_view(limit=10, panel_id='div2')  # Limit to 10 rows
+        view_html_div2 = cached_get_log_table_view(limit=10, panel_id='div2', conditions_json='[]')
         response_time = time.time() - start_time
         row_count = view_html_div2.count('<tr')
         logger.debug(f"view_html_div2 response took {response_time:.3f} seconds, rows={row_count}, content: {view_html_div2[:100]}...")
@@ -124,7 +127,7 @@ def set_view():
             view_html = ""
             if view_type == 'log_table':
                 start_time = time.time()
-                view_html = cached_get_log_table_view(limit=10, panel_id=panel_id)  # Limit to 10 rows
+                view_html = cached_get_log_table_view(limit=10, panel_id=panel_id, conditions_json='[]')
                 response_time = time.time() - start_time
                 row_count = view_html.count('<tr')
                 logger.debug(f"Generated view_html for {panel_id} in {response_time:.3f} seconds, rows={row_count}, content: {view_html[:100]}...")
@@ -140,3 +143,47 @@ def set_view():
     except Exception as e:
         logger.error(f"Error setting view: {e}")
         return jsonify({'success': False, 'message': 'Server error occurred.'}), 500
+
+@home_bp.route('/render_log_table', methods=['POST'])
+def render_log_table():
+    try:
+        data = request.get_json()
+        panel_id = request.args.get('panel_id', 'div1')
+        view_html = data.get('view_html', '')
+        logger.debug(f"Rendering log_table.html for panel_id={panel_id}, view_html length={len(view_html)}")
+        return render_template('log_table.html', panel_id=panel_id, view_html=view_html)
+    except Exception as e:
+        logger.error(f"Error rendering log_table: {e}")
+        return jsonify({'error': 'Failed to render log table'}), 500
+
+@home_bp.route('/legacy/recent_logs', methods=['POST'])
+def recent_logs():
+    try:
+        data = request.get_json()
+        panel_id = request.args.get('panel_id', 'div1')
+        limit = int(request.args.get('limit', 10))
+        offset = int(request.args.get('offset', 0))
+        conditions = data.get('conditions', [])
+        logger.debug(f"Fetching recent logs for panel_id={panel_id}, limit={limit}, offset={offset}, conditions={conditions}")
+        view_html = get_log_table_view(limit=limit, offset=offset, conditions=conditions)
+        logger.debug(f"Generated view_html for {panel_id}, length={len(view_html)}, content={view_html[:100]}...")
+        return view_html
+    except Exception as e:
+        logger.error(f"Error fetching recent logs: {e}")
+        return jsonify({'error': 'Failed to fetch recent logs'}), 500
+
+@home_bp.route('/home/recent_logs', methods=['POST'])
+def home_recent_logs():
+    try:
+        data = request.get_json()
+        panel_id = request.args.get('panel_id', 'div1')
+        limit = int(request.args.get('limit', 10))
+        offset = int(request.args.get('offset', 0))
+        conditions = data.get('conditions', [])
+        logger.debug(f"Fetching home recent logs for panel_id={panel_id}, limit={limit}, offset={offset}, conditions={conditions}")
+        view_html = get_log_table_view(limit=limit, offset=offset, conditions=conditions)
+        logger.debug(f"Generated view_html for {panel_id}, length={len(view_html)}, content={view_html[:100]}...")
+        return view_html
+    except Exception as e:
+        logger.error(f"Error fetching home recent logs: {e}")
+        return jsonify({'error': 'Failed to fetch home recent logs'}), 500

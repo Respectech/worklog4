@@ -1,0 +1,80 @@
+<!-- Log Table View for a specific panel -->
+<div class="log-table-container" id="log-table-container-{{ panel_id }}">
+    <div class="query-container">
+        <button class="btn query-button" data-bs-toggle="modal" data-bs-target="#queryModal-{{ panel_id }}">Query</button>
+        <button class="btn btn-secondary clear-button" onclick="clearQuery('{{ panel_id }}')">Clear</button>
+        <div class="query-display" id="query-display-{{ panel_id }}">Query: None</div>
+    </div>
+    <div class="table-responsive">
+        <table id="logTable-{{ panel_id }}" class="table table-striped table-hover table-bordered">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Date</th>
+                    <th>Client</th>
+                    <th>Consultant</th>
+                    <th>Description</th>
+                    <th>Amount Due</th>
+                </tr>
+            </thead>
+            <tbody>
+                {{ view_html | safe }}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Query Modal for this panel -->
+<div class="modal fade d-none" id="queryModal-{{ panel_id }}" tabindex="-1" aria-labelledby="queryModalLabel-{{ panel_id }}" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="queryModalLabel-{{ panel_id }}">Build Query for Panel {{ panel_id | capitalize }}</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close">Close</button>
+            </div>
+            <div class="modal-body">
+                <form id="query-form-{{ panel_id }}">
+                    <input type="hidden" name="panel_id" value="{{ panel_id }}">
+                    <div class="d-flex flex-row align-items-start">
+                        <!-- Columns -->
+                        <div class="query-section me-4">
+                            <label class="form-label">Column</label>
+                            <table class="column-table">
+                                <tbody>
+                                    <tr><td class="column-cell" data-value="id">ID</td></tr>
+                                    <tr><td class="column-cell" data-value="item_date">Date</td></tr>
+                                    <tr><td class="column-cell" data-value="client">Client</td></tr>
+                                    <tr><td class="column-cell" data-value="consultant">Consultant</td></tr>
+                                    <tr><td class="column-cell" data-value="description">Description</td></tr>
+                                    <tr><td class="column-cell" data-value="client_amount_due">Amount Due</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <!-- Operators -->
+                        <div class="query-section me-4">
+                            <label class="form-label">Operator</label>
+                            <table class="operator-table">
+                                <tbody>
+                                    <tr><td class="operator-cell" data-value="equals">Equals</td></tr>
+                                    <tr><td class="operator-cell" data-value="contains">Contains</td></tr>
+                                    <tr><td class="operator-cell" data-value="doesn't_contain">Doesn't Contain</td></tr>
+                                    <tr><td class="operator-cell" data-value=">">&gt;</td></tr>
+                                    <tr><td class="operator-cell" data-value=">=">&gt;=</td></tr>
+                                    <tr><td class="operator-cell" data-value="<">&lt;</td></tr>
+                                    <tr><td class="operator-cell" data-value="<=">&lt;=</td></tr>
+                                    <tr><td class="operator-cell" data-value="<>">&lt;&gt;</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <!-- Value and Add Button -->
+                        <div class="query-section">
+                            <label for="query-value-{{ panel_id }}" class="form-label">Value</label>
+                            <input type="text" class="form-control mb-2" id="query-value-{{ panel_id }}" name="value" required>
+                            <button type="button" class="btn btn-primary" onclick="addQueryCondition('{{ panel_id }}')">Add</button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>

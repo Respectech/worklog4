@@ -154,13 +154,53 @@ header {
     pointer-events: auto;
 }
 
+/* Log table container */
+.log-table-container {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+/* Query button and display */
+.query-container {
+    display: flex;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.query-button {
+    font-size: 0.875rem;
+    padding: 0.25rem 0.75rem;
+    margin-right: 10px;
+    background-color: #28a745;
+    border-color: #28a745;
+    color: #fff;
+}
+
+.query-button:hover {
+    background-color: #218838;
+    border-color: #1e7e34;
+}
+
+.clear-button {
+    font-size: 0.875rem;
+    padding: 0.25rem 0.75rem;
+    margin-right: 10px;
+}
+
+.query-display {
+    font-size: 0.875rem;
+    color: #495057;
+}
+
 /* Table styles with scrolling */
 .table-responsive {
     border-radius: 0.25rem;
     overflow-x: auto; /* Horizontal scrolling */
     overflow-y: auto; /* Vertical scrolling */
     width: 100% !important;
-    max-height: calc(100vh - 60px - 60px); /* Constrain table height */
+    max-height: calc(100vh - 60px - 60px - 40px); /* Adjusted for query container */
     box-sizing: border-box;
 }
 
@@ -225,13 +265,13 @@ form:has(select#view_type):not(#viewModal form) {
     display: none !important;
 }
 
-/* Ensure modal is hidden by default */
-#viewModal {
+/* Ensure modals are hidden by default */
+#viewModal, [id^='queryModal-'] {
     display: none !important;
 }
 
 /* Ensure modal container covers viewport with overlay */
-#viewModal.show {
+#viewModal.show, [id^='queryModal-'].show {
     display: block !important;
     position: fixed;
     top: 0;
@@ -243,21 +283,23 @@ form:has(select#view_type):not(#viewModal form) {
 }
 
 /* Constrain modal dialog width */
-#viewModal .modal-dialog {
-    max-width: 500px;
+#viewModal .modal-dialog, [id^='queryModal-'] .modal-dialog {
+    max-width: 900px; /* Increased for side-by-side layout */
     margin: 1.75rem auto;
 }
 
 /* Ensure modal content doesn’t stretch */
-#viewModal .modal-content {
+#viewModal .modal-content, [id^='queryModal-'] .modal-content {
     width: auto;
     max-width: 100%;
 }
 
 /* Enhance modal content styling */
 .modal-content {
+    background-color: #ffffff !important; /* White background */
     border-radius: 0.5rem;
     box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+    min-height: 600px;
 }
 
 .modal-header {
@@ -277,15 +319,15 @@ form:has(select#view_type):not(#viewModal form) {
 }
 
 /* Style modal form elements */
-#modal-view-form .form-label {
+#modal-view-form .form-label, [id^='query-form-'] .form-label {
     font-size: 0.875rem;
     font-weight: 500;
     color: #495057;
     margin-bottom: 0.5rem;
 }
 
-#modal-view-form .form-select {
-    width: 100%;
+#modal-view-form .form-select, [id^='query-form-'] .form-select, [id^='query-form-'] .form-control {
+    width: 200px; /* Fixed width for value input */
     padding: 0.5rem;
     font-size: 0.875rem;
     border-radius: 0.25rem;
@@ -293,12 +335,12 @@ form:has(select#view_type):not(#viewModal form) {
     transition: border-color 0.2s;
 }
 
-#modal-view-form .form-select:focus {
+#modal-view-form .form-select:focus, [id^='query-form-'] .form-select:focus, [id^='query-form-'] .form-control:focus {
     border-color: #007bff;
     box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
 }
 
-#modal-view-form .btn-primary {
+#modal-view-form .btn-primary, [id^='query-form-'] .btn-primary {
     width: 100%;
     padding: 0.5rem;
     font-size: 0.875rem;
@@ -309,7 +351,7 @@ form:has(select#view_type):not(#viewModal form) {
     transition: background-color 0.2s, border-color 0.2s;
 }
 
-#modal-view-form .btn-primary:hover {
+#modal-view-form .btn-primary:hover, [id^='query-form-'] .btn-primary:hover {
     background-color: #0056b3;
     border-color: #004085;
 }
@@ -317,4 +359,62 @@ form:has(select#view_type):not(#viewModal form) {
 .modal-footer {
     border-top: 1px solid #dee2e6;
     padding: 1rem 1.5rem;
+}
+
+/* Style query modal tables */
+.column-table, .operator-table {
+    width: 200px; /* Fixed width for alignment */
+    border-collapse: collapse;
+    margin-right: 20px; /* Space between tables */
+}
+
+.column-cell, .operator-cell {
+    padding: 8px;
+    border: 1px solid #dee2e6;
+    cursor: pointer;
+    background-color: #f8f9fa;
+    transition: background-color 0.2s, color 0.2s;
+    font-size: 0.875rem;
+    text-align: left;
+}
+
+.column-cell:hover, .operator-cell:hover {
+    background-color: #e9ecef;
+}
+
+.column-cell.active, .operator-cell.active {
+    background-color: #007bff !important;
+    color: #ffffff !important;
+}
+
+/* Style query section */
+.query-section {
+    min-width: 200px; /* Ensure sections don’t collapse */
+    max-width: 30%;
+    float: left;
+}
+
+/* Style clear button */
+.clear-button {
+    font-size: 0.875rem;
+    padding: 0.25rem 0.75rem;
+    margin-right: 10px;
+}
+
+/* Ensure modal layout is responsive */
+@media (max-width: 768px) {
+    .d-flex.flex-row.align-items-start {
+        flex-direction: column;
+    }
+    .me-4 {
+        margin-right: 0 !important;
+        margin-bottom: 1rem;
+    }
+    .query-section {
+        min-width: 100%; /* Full width on small screens */
+    }
+    .column-table, .operator-table {
+        width: 100%;
+        margin-right: 0;
+    }
 }
